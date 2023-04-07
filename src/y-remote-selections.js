@@ -125,6 +125,7 @@ export class YRemoteSelectionsPluginValue {
    */
   constructor (view) {
     this.conf = view.state.facet(ySyncFacet)
+    this.showLocalCaret = this.conf.showLocalCaret;
     this._listener = ({ added, updated, removed }, s, t) => {
       const clients = added.concat(updated).concat(removed)
       if (clients.findIndex(id => id !== this.conf.awareness.doc.clientID) >= 0) {
@@ -179,9 +180,10 @@ export class YRemoteSelectionsPluginValue {
 
     // update decorations (remote selections)
     awareness.getStates().forEach((state, clientid) => {
-      if (clientid === awareness.doc.clientID) {
+      if (!this.showLocalCaret && clientid === awareness.doc.clientID) {
         return
       }
+
       const cursor = state.cursor
       if (cursor == null || cursor.anchor == null || cursor.head == null) {
         return
@@ -192,6 +194,21 @@ export class YRemoteSelectionsPluginValue {
         return
       }
       const { color = '#30bced', name = 'Anonymous' } = state.user || {}
+
+      decorations.push({
+        from: head.index,
+        to: head.index,
+        value: cmView.Decoration.widget({
+          side: head.index - anchor.index > 0 ? -1 : 1, // the local cursor should be rendered outside the remote selection
+          block: false,
+          widget: new YRemoteCaretWidget(color, name)
+        })
+      })
+
+      if (clientid === awareness.doc.clientID) {
+        return
+      }
+
       const colorLight = (state.user && state.user.colorLight) || color + '33'
       const start = math.min(anchor.index, head.index)
       const end = math.max(anchor.index, head.index)
@@ -238,15 +255,6 @@ export class YRemoteSelectionsPluginValue {
           })
         }
       }
-      decorations.push({
-        from: head.index,
-        to: head.index,
-        value: cmView.Decoration.widget({
-          side: head.index - anchor.index > 0 ? -1 : 1, // the local cursor should be rendered outside the remote selection
-          block: false,
-          widget: new YRemoteCaretWidget(color, name)
-        })
-      })
     })
     this.decorations = cmView.Decoration.set(decorations, true)
   }

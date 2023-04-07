@@ -5,9 +5,10 @@ import * as cmView from '@codemirror/view' // eslint-disable-line
 import { YRange } from './y-range.js'
 
 export class YSyncConfig {
-  constructor (ytext, awareness) {
+  constructor (ytext, awareness, { showLocalCaret }) {
     this.ytext = ytext
     this.awareness = awareness
+    this.showLocalCaret = showLocalCaret || false
     this.undoManager = new Y.UndoManager(ytext)
   }
 

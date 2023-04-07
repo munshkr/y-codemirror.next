@@ -15,10 +15,11 @@ export { YRange, yRemoteSelections, yRemoteSelectionsTheme, ySync, ySyncFacet, Y
  * @param {any} awareness
  * @param {Object} [opts]
  * @param {Y.UndoManager | false} [opts.undoManager] Set undoManager to false to disable the undo-redo plugin
+ * @param {boolean | false} [opts.showLocalCaret] Show caret widget on local clients too
  * @return {cmState.Extension}
  */
-export const yCollab = (ytext, awareness, { undoManager = new Y.UndoManager(ytext) } = {}) => {
-  const ySyncConfig = new YSyncConfig(ytext, awareness)
+export const yCollab = (ytext, awareness, { undoManager = new Y.UndoManager(ytext), showLocalCaret = false } = {}) => {
+  const ySyncConfig = new YSyncConfig(ytext, awareness, { showLocalCaret })
   const plugins = [
     ySyncFacet.of(ySyncConfig),
     ySync
