@@ -121,7 +121,16 @@ class YSyncPluginValue {
             pos += d.retain
           }
         }
-        view.dispatch({ changes, annotations: [ySyncAnnotation.of(this.conf)] })
+
+        // If editor has no focus and event is not local, scroll view to position of this change
+        const hasFocus = view.hasFocus && view.dom.ownerDocument.hasFocus()
+        const effects = (!hasFocus && !event.local) ? cmView.EditorView.scrollIntoView(pos) : null
+
+        view.dispatch({
+          changes,
+          annotations: [ySyncAnnotation.of(this.conf)],
+          effects
+        })
       }
     }
     this._ytext = this.conf.ytext
