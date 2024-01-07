@@ -119,6 +119,18 @@ class YRemoteCaretWidget extends cmView.WidgetType {
   }
 }
 
+const getPosFromCursor = (cursor) => {
+  if (cursor == null || cursor.anchor == null || cursor.head == null) {
+    return
+  }
+  const anchor = Y.createAbsolutePositionFromRelativePosition(cursor.anchor, this.conf.ytext.doc)
+  const head = Y.createAbsolutePositionFromRelativePosition(cursor.head, this.conf.ytext.doc)
+  if (anchor == null || head == null || anchor.type !== this.conf.ytext || head.type !== this.conf.ytext) {
+    return
+  }
+  return math.min(anchor.index, head.index)
+}
+
 export class YRemoteSelectionsPluginValue {
   /**
    * @param {cmView.EditorView} view
@@ -130,6 +142,18 @@ export class YRemoteSelectionsPluginValue {
       const clients = added.concat(updated).concat(removed)
       if (clients.findIndex(id => id !== this.conf.awareness.doc.clientID) >= 0) {
         view.dispatch({ annotations: [yRemoteSelectionsAnnotation.of([])] })
+      }
+
+      const hasFocus = view.hasFocus && view.dom.ownerDocument.hasFocus()
+      if (!hasFocus) {
+        this.conf.awareness.getStates().forEach((state, clientid) => {
+          // If editor has no focus, for each remote added/updated client, scroll view to position of this change
+          if ((added.includes(clientid) || updated.includes(clientid)) && clientid !== this.conf.awareness.doc.clientID) {
+            const pos = getPosFromCursor(state.cursor)
+            if (!pos) return
+            view.dispatch({ effects: cmView.EditorView.scrollIntoView(pos) })
+          }
+        });
       }
     }
     this._awareness = this.conf.awareness
