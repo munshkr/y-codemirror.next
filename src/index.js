@@ -16,10 +16,11 @@ export { YRange, yRemoteSelections, yRemoteSelectionsTheme, ySync, ySyncFacet, Y
  * @param {Object} [opts]
  * @param {Y.UndoManager | false} [opts.undoManager] Set undoManager to false to disable the undo-redo plugin
  * @param {boolean | false} [opts.showLocalCaret] Show caret widget on local clients too
+ * @param {boolean | false} [opts.hideCaret] Hide the caret widget for all clients (local and remote)
  * @return {cmState.Extension}
  */
-export const yCollab = (ytext, awareness, { undoManager = new Y.UndoManager(ytext), showLocalCaret = false } = {}) => {
-  const ySyncConfig = new YSyncConfig(ytext, awareness, { showLocalCaret })
+export const yCollab = (ytext, awareness, { undoManager = new Y.UndoManager(ytext), showLocalCaret = false, hideCaret = false } = {}) => {
+  const ySyncConfig = new YSyncConfig(ytext, awareness, { showLocalCaret, hideCaret })
   const plugins = [
     ySyncFacet.of(ySyncConfig),
     ySync
@@ -36,7 +37,7 @@ export const yCollab = (ytext, awareness, { undoManager = new Y.UndoManager(ytex
       yUndoManagerFacet.of(new YUndoManagerConfig(undoManager)),
       yUndoManager,
       cmView.EditorView.domEventHandlers({
-        beforeinput (e, view) {
+        beforeinput(e, view) {
           if (e.inputType === 'historyUndo') return undo(view)
           if (e.inputType === 'historyRedo') return redo(view)
           return false

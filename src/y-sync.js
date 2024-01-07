@@ -5,10 +5,11 @@ import * as cmView from '@codemirror/view' // eslint-disable-line
 import { YRange } from './y-range.js'
 
 export class YSyncConfig {
-  constructor (ytext, awareness, { showLocalCaret }) {
+  constructor(ytext, awareness, { showLocalCaret, hideCaret }) {
     this.ytext = ytext
     this.awareness = awareness
     this.showLocalCaret = showLocalCaret || false
+    this.hideCaret = hideCaret || false
     this.undoManager = new Y.UndoManager(ytext)
   }
 
@@ -39,14 +40,14 @@ export class YSyncConfig {
    * @param {number} pos
    * @param {number} [assoc]
    */
-  toYPos (pos, assoc = 0) {
+  toYPos(pos, assoc = 0) {
     return Y.createRelativePositionFromTypeIndex(this.ytext, pos, assoc)
   }
 
   /**
    * @param {Y.RelativePosition | Object} rpos
    */
-  fromYPos (rpos) {
+  fromYPos(rpos) {
     const pos = Y.createAbsolutePositionFromRelativePosition(Y.createRelativePositionFromJSON(rpos), this.ytext.doc)
     if (pos == null || pos.type !== this.ytext) {
       throw new Error('[y-codemirror] The position you want to retrieve was created by a different document')
@@ -61,7 +62,7 @@ export class YSyncConfig {
    * @param {cmState.SelectionRange} range
    * @return {YRange}
    */
-  toYRange (range) {
+  toYRange(range) {
     const assoc = range.assoc
     const yanchor = this.toYPos(range.anchor, assoc)
     const yhead = this.toYPos(range.head, assoc)
@@ -71,7 +72,7 @@ export class YSyncConfig {
   /**
    * @param {YRange} yrange
    */
-  fromYRange (yrange) {
+  fromYRange(yrange) {
     const anchor = this.fromYPos(yrange.yanchor)
     const head = this.fromYPos(yrange.yhead)
     if (anchor.pos === head.pos) {
@@ -85,7 +86,7 @@ export class YSyncConfig {
  * @type {cmState.Facet<YSyncConfig, YSyncConfig>}
  */
 export const ySyncFacet = cmState.Facet.define({
-  combine (inputs) {
+  combine(inputs) {
     return inputs[inputs.length - 1]
   }
 })
@@ -102,7 +103,7 @@ class YSyncPluginValue {
   /**
    * @param {cmView.EditorView} view
    */
-  constructor (view) {
+  constructor(view) {
     this.view = view
     this.conf = view.state.facet(ySyncFacet)
     this._observer = (event, tr) => {
@@ -140,7 +141,7 @@ class YSyncPluginValue {
   /**
    * @param {cmView.ViewUpdate} update
    */
-  update (update) {
+  update(update) {
     if (!update.docChanged || (update.transactions.length > 0 && update.transactions[0].annotation(ySyncAnnotation) === this.conf)) {
       return
     }
@@ -163,7 +164,7 @@ class YSyncPluginValue {
     }, this.conf)
   }
 
-  destroy () {
+  destroy() {
     this._ytext.unobserve(this._observer)
   }
 }

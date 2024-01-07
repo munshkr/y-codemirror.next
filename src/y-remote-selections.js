@@ -78,13 +78,13 @@ class YRemoteCaretWidget extends cmView.WidgetType {
    * @param {string} color
    * @param {string} name
    */
-  constructor (color, name) {
+  constructor(color, name) {
     super()
     this.color = color
     this.name = name
   }
 
-  toDOM () {
+  toDOM() {
     return /** @type {HTMLElement} */ (dom.element('span', [pair.create('class', 'cm-ySelectionCaret'), pair.create('style', `background-color: ${this.color}; border-color: ${this.color}`)], [
       dom.text('\u2060'),
       dom.element('div', [
@@ -100,44 +100,35 @@ class YRemoteCaretWidget extends cmView.WidgetType {
     ]))
   }
 
-  eq (widget) {
+  eq(widget) {
     return widget.color === this.color
   }
 
-  compare (widget) {
+  compare(widget) {
     return widget.color === this.color
   }
 
-  updateDOM () {
+  updateDOM() {
     return false
   }
 
-  get estimatedHeight () { return -1 }
+  get estimatedHeight() { return -1 }
 
-  ignoreEvent () {
+  ignoreEvent() {
     return true
   }
-}
-
-const getPosFromCursor = (cursor) => {
-  if (cursor == null || cursor.anchor == null || cursor.head == null) {
-    return
-  }
-  const anchor = Y.createAbsolutePositionFromRelativePosition(cursor.anchor, this.conf.ytext.doc)
-  const head = Y.createAbsolutePositionFromRelativePosition(cursor.head, this.conf.ytext.doc)
-  if (anchor == null || head == null || anchor.type !== this.conf.ytext || head.type !== this.conf.ytext) {
-    return
-  }
-  return math.min(anchor.index, head.index)
 }
 
 export class YRemoteSelectionsPluginValue {
   /**
    * @param {cmView.EditorView} view
    */
-  constructor (view) {
+  constructor(view) {
     this.conf = view.state.facet(ySyncFacet)
+
     this.showLocalCaret = this.conf.showLocalCaret;
+    this.hideCaret = this.conf.hideCaret;
+
     this._listener = ({ added, updated, removed }, s, t) => {
       const clients = added.concat(updated).concat(removed)
       if (clients.findIndex(id => id !== this.conf.awareness.doc.clientID) >= 0) {
@@ -149,29 +140,35 @@ export class YRemoteSelectionsPluginValue {
         this.conf.awareness.getStates().forEach((state, clientid) => {
           // If editor has no focus, for each remote added/updated client, scroll view to position of this change
           if ((added.includes(clientid) || updated.includes(clientid)) && clientid !== this.conf.awareness.doc.clientID) {
-            const pos = getPosFromCursor(state.cursor)
+            if (!state.cursor) return
+            const pos = this.getPosFromCursor(state.cursor)
             if (!pos) return
             view.dispatch({ effects: cmView.EditorView.scrollIntoView(pos) })
           }
         });
       }
     }
+
     this._awareness = this.conf.awareness
     this._awareness.on('change', this._listener)
+
+    console.log("Set local state field hiddenCaret to", this.hideCaret)
+    this.conf.awareness.setLocalStateField("hiddenCaret", this.hideCaret)
+
     /**
      * @type {cmView.DecorationSet}
      */
     this.decorations = cmState.RangeSet.of([])
   }
 
-  destroy () {
+  destroy() {
     this._awareness.off('change', this._listener)
   }
 
   /**
    * @param {cmView.ViewUpdate} update
    */
-  update (update) {
+  update(update) {
     const ytext = this.conf.ytext
     const ydoc = /** @type {Y.Doc} */ (ytext.doc)
     const awareness = this.conf.awareness
@@ -179,6 +176,7 @@ export class YRemoteSelectionsPluginValue {
      * @type {Array<cmState.Range<cmView.Decoration>>}
      */
     const decorations = []
+
     const localAwarenessState = this.conf.awareness.getLocalState()
 
     // set local awareness state (update cursors)
@@ -204,7 +202,8 @@ export class YRemoteSelectionsPluginValue {
 
     // update decorations (remote selections)
     awareness.getStates().forEach((state, clientid) => {
-      if (!this.showLocalCaret && clientid === awareness.doc.clientID) {
+      const stateIsLocal = clientid === awareness.doc.clientID
+      if (state.hiddenCaret || (stateIsLocal && !this.showLocalCaret)) {
         return
       }
 
@@ -219,6 +218,7 @@ export class YRemoteSelectionsPluginValue {
       }
       const { color = '#30bced', name = 'Anonymous' } = state.user || {}
 
+      // Render caret widget
       decorations.push({
         from: head.index,
         to: head.index,
@@ -229,15 +229,17 @@ export class YRemoteSelectionsPluginValue {
         })
       })
 
-      if (clientid === awareness.doc.clientID) {
+      if (stateIsLocal) {
         return
       }
 
+      // Now, render remote selection markers
       const colorLight = (state.user && state.user.colorLight) || color + '33'
       const start = math.min(anchor.index, head.index)
       const end = math.max(anchor.index, head.index)
       const startLine = update.view.state.doc.lineAt(start)
       const endLine = update.view.state.doc.lineAt(end)
+
       if (startLine.number === endLine.number) {
         // selected content in a single line.
         decorations.push({
@@ -280,7 +282,20 @@ export class YRemoteSelectionsPluginValue {
         }
       }
     })
+
     this.decorations = cmView.Decoration.set(decorations, true)
+  }
+
+  getPosFromCursor(cursor) {
+    if (cursor == null || cursor.anchor == null || cursor.head == null) {
+      return
+    }
+    const anchor = Y.createAbsolutePositionFromRelativePosition(cursor.anchor, this.conf.ytext.doc)
+    const head = Y.createAbsolutePositionFromRelativePosition(cursor.head, this.conf.ytext.doc)
+    if (anchor == null || head == null || anchor.type !== this.conf.ytext || head.type !== this.conf.ytext) {
+      return
+    }
+    return math.min(anchor.index, head.index)
   }
 }
 
