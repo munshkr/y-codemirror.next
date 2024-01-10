@@ -123,9 +123,11 @@ class YSyncPluginValue {
           }
         }
 
-        // If editor has no focus and event is not local, scroll view to position of this change
+        // If editor has no focus and event is not local, and position is valid,
+        // scroll view to position of this change:
         const hasFocus = view.hasFocus && view.dom.ownerDocument.hasFocus()
-        const effects = (!hasFocus && !event.local) ? cmView.EditorView.scrollIntoView(pos) : null
+        const isValidPosition = pos < view.state.doc.length
+        const effects = (!hasFocus && !event.local && isValidPosition) ? cmView.EditorView.scrollIntoView(pos) : null
 
         view.dispatch({
           changes,
